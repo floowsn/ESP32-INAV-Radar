@@ -1,7 +1,7 @@
 // -------- GENERAL
 
-#define VERSION "1.6"
-#define VERSION_CONFIG 160
+#define VERSION "1.6.1"
+#define VERSION_CONFIG 161
 #define FORCE_DEFAULT_PROFILE 1
 #define CFG_PROFILE_DEFAULT_ID 1
 #define CFG_PROFILE_DEFAULT_NAME "Default"
