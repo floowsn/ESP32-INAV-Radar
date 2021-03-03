@@ -725,7 +725,7 @@ void setup() {
         display.setFont(ArialMT_Plain_10);
         display.drawString(0, 0, "RADAR VERSION ");
         display.setFont(ArialMT_Plain_16);
-        display.drawString(100, 0, String(VERSION));
+        display.drawString(95, 0, String(VERSION));
         display.setFont(ArialMT_Plain_10);        
         display.drawString(0, 9, "PROFILE " + String(cfg.profile_id) + " " + String(cfg.profile_name));
         display.drawString(0, 18, "HOST");
