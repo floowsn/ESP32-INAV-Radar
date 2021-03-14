@@ -11,6 +11,8 @@
 
 #define M_PI 3.14159265358979323846
 
+int updates_since_last_rx = 0;
+
 // -------- VARS
 
 config_t cfg;
@@ -180,8 +182,12 @@ return degrees(a2);
 // -------- LoRa
 
 void lora_send() {
+    
     if (sys.lora_tick % 8 == 0) {
-        if (sys.lora_tick % 16 == 0) {
+        if (sys.lora_tick % 16 == 0) { // every 16th transmission is some battery info
+            //if (DEBUG == 1) {
+            //    Serial.println("AIR3");
+            //    }
             air_3.id = curr.id;
             air_3.type = 3;
             air_3.vbat = curr.fcanalog.vbat; // 1 to 255 (V x 10)
@@ -194,7 +200,10 @@ void lora_send() {
             LoRa.write((uint8_t*)&air_3, sizeof(air_3));
             LoRa.endPacket(false);
         }
-        else {
+        else {  // every 8th transmission is some status info
+            //if (DEBUG == 1) {
+            //    Serial.println("AIR2");
+            //    }
             air_2.id = curr.id;
             air_2.type = 2;
             air_2.host = curr.host;
@@ -209,6 +218,9 @@ void lora_send() {
     }
     else {
         if (sys.lora_tick % 2 == 0) {
+            //if (DEBUG == 1) {
+            //    Serial.println("AIR0");
+            //    }
             air_0.id = curr.id;
             air_0.type = 0;
             air_0.lat = curr.gps.lat / 100; // From XX.1234567 to XX.12345
@@ -221,6 +233,9 @@ void lora_send() {
             LoRa.endPacket(false);
         }
         else {
+            //if (DEBUG == 1) {
+            //    Serial.println("AIR1");
+            //    }
             air_1.id = curr.id;
             air_1.type = 1;
             air_1.lat = curr.gps.lat / 100; // From XX.1234567 to XX.12345
@@ -234,6 +249,7 @@ void lora_send() {
             LoRa.endPacket(false);
         }
     }
+    
 }
 
 void lora_receive(int packetSize) {
@@ -257,35 +273,30 @@ void lora_receive(int packetSize) {
     peers[id].rssi = sys.last_rssi;
 
     if (air_0.type == 0) { // Type 0 packet
-
         peers[id].gps.lat = air_0.lat * 100; // From XX.12345 to XX.1234500
         peers[id].gps.lon = air_0.lon * 100; // From XX.12345 to XX.1234500
         peers[id].gps.alt = air_0.alt; // m
         peers[id].gps.groundCourse = air_0.heading * 10; // From degres to degres x 10
+        updates_since_last_rx = 0;
     }
     else if (air_0.type == 1) { // Type 1 packet
-
         air_r1 = (air_type1_t*)&air_0;
-
         peers[id].gps.lat = (*air_r1).lat * 100; // From XX.12345 to XX.1234500
         peers[id].gps.lon = (*air_r1).lon * 100; // From XX.12345 to XX.1234500
         peers[id].gps.alt = (*air_r1).alt; // m
         peers[id].gps.groundSpeed = (*air_r1).speed * 100; // From m/s to cm/s
         peers[id].broadcast = (*air_r1).broadcast;
+        updates_since_last_rx = 0;
     }
     else if (air_0.type == 2) { // Type 2 packet
-
         air_r2 = (air_type2_t*)&air_0;
-
         peers[id].host = (*air_r2).host;
         peers[id].state = (*air_r2).state;
         strncpy(peers[id].name, (*air_r2).name, LORA_NAME_LENGTH);
         peers[id].name[LORA_NAME_LENGTH] = 0;
     }
     else if (air_0.type == 3) { // Type 3 packet
-
         air_r3 = (air_type3_t*)&air_0;
-
         peers[id].fcanalog.vbat = (*air_r3).vbat;
         peers[id].fcanalog.mAhDrawn = (*air_r3).mah;
         peers[id].fcanalog.rssi = (*air_r3).rssi;
@@ -350,7 +361,6 @@ void display_draw() {
     display.clear();
     int j = 0;
     int line;
-
     if (sys.display_page == 0) {
 
         display.setFont(ArialMT_Plain_24);
@@ -625,6 +635,18 @@ void msp_set_fc() {
     msp.request(MSP_ANALOG, &curr.fcanalog, sizeof(curr.fcanalog));
 }
 
+void msp_send_radar(uint8_t i, uint8_t delta_time) { // interpolate between points
+    radarPos.id = i;
+    radarPos.state = peers[i].state;
+    radarPos.lat = peers[i].gps.lat + rad2deg(atan((peers[i].gps.groundSpeed / 100 * cos(deg2rad(peers[i].gps.groundCourse / 10)) * delta_time) / 6371000)); // x 10E7
+    radarPos.lon = peers[i].gps.lon + rad2deg(atan((peers[i].gps.groundSpeed / 100 * sin(deg2rad(peers[i].gps.groundCourse / 10)) * delta_time) / 6371000)); // x 10E7
+    radarPos.alt = peers[i].gps.alt * 100; // cm
+    radarPos.heading = peers[i].gps.groundCourse / 10; // From ° x 10 to °
+    radarPos.speed = peers[i].gps.groundSpeed; // cm/s
+    radarPos.lq = peers[i].lq;
+    msp.command2(MSP2_COMMON_SET_RADAR_POS , &radarPos, sizeof(radarPos), 0);
+}
+
 void msp_send_radar(uint8_t i) {
     radarPos.id = i;
     radarPos.state = peers[i].state;
@@ -637,6 +659,7 @@ void msp_send_radar(uint8_t i) {
     msp.command2(MSP2_COMMON_SET_RADAR_POS , &radarPos, sizeof(radarPos), 0);
 }
 
+/*
 void msp_send_peers() {
     for (int i = 0; i < cfg.lora_nodes_max; i++) {
         if (peers[i].id > 0) {
@@ -644,13 +667,17 @@ void msp_send_peers() {
         }
     }
 }
-
+*/
 void msp_send_peer(uint8_t peer_id) {
     if (peers[peer_id].id > 0) {
         msp_send_radar(peer_id);
     }
 }
-
+void msp_send_peer(uint8_t peer_id, uint8_t delay_time) {
+    if (peers[peer_id].id > 0) {
+        msp_send_radar(peer_id, delay_time);
+    }
+}
 // -------- INTERRUPTS
 
 const byte interruptPin = 0;
@@ -684,7 +711,9 @@ void IRAM_ATTR handleInterrupt() {
 // ----------------------------- setup
 
 void setup() {
-
+    if (DEBUG == 1) {
+        Serial.begin(9600);  // for serial drawing
+    }
     sys.phase = MODE_START;
 
     config_init();
@@ -958,12 +987,14 @@ void loop() {
             }
 
         }
-
+        int delaytime = cfg.lora_slot_spacing / 2 * updates_since_last_rx;
         msp_get_gps(); // GPS > FC > ESP
-        msp_send_peer(sys.lora_slot); // ESP > FC > OSD
+        //msp_send_peer(sys.lora_slot); // ESP > FC > OSD
+        msp_send_peer(sys.lora_slot, delaytime); // ESP > FC > OSD
         stats.last_msp_duration[sys.lora_slot] = millis() - stats.timer_begin;
-        sys.msp_next_cycle += cfg.lora_slot_spacing;
+        sys.msp_next_cycle += cfg.lora_slot_spacing / 2;
         sys.lora_slot++;
+        updates_since_last_rx++;
     }
 
 // ---------------------- STATISTICS & IO

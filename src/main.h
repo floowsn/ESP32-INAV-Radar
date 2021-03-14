@@ -8,21 +8,23 @@
 
 // -------- LORA DEFAULTS
 
+#define DEBUG 0
+
 #define LORA_FREQUENCY 433E6 // 433E6, 868E6, 915E6
 
 #define LORA_BANDWIDTH 250000 // 250000
 #define LORA_CODING_RATE 5 // 5
-#define LORA_SPREADING_FACTOR 10 // 9
+#define LORA_SPREADING_FACTOR 9 // 9
 #define LORA_POWER 20 
 
 #define LORA_NODES_MAX 2 // 4
-#define LORA_SLOT_SPACING 200 // 150
+#define LORA_SLOT_SPACING 150 // 150
 #define LORA_TIMING_DELAY -70 // -70
-#define LORA_MSP_AFTER_TX_DELAY 180
+#define LORA_MSP_AFTER_TX_DELAY 0 //180
 
 #define LORA_NAME_LENGTH 6
 #define LORA_CYCLE_SCAN 3000 // 3000
-#define LORA_PEER_TIMEOUT 6000 // 6s
+#define LORA_PEER_TIMEOUT 6000 // 6000
 #define LORA_PEER_TIMEOUT_LOST 30000  // 30s
 #define LORA_DRIFT_THRESHOLD 5 // Min for action
 #define LORA_DRIFT_CORRECTION 10 // Max to correct
@@ -56,7 +58,7 @@
 
 // -------- HOST
 
-#define HOST_MSP_TIMEOUT 9000
+#define HOST_MSP_TIMEOUT 9000// 9000
 #define HOST_NONE 0
 #define HOST_INAV 1
 #define HOST_BTFL 2
@@ -94,6 +96,8 @@ struct curr_t {
     msp_analog_t fcanalog;
 };
 
+
+
 struct air_type0_t { // 80 bits
     unsigned int id : 4;
     unsigned int type : 3;
@@ -102,6 +106,7 @@ struct air_type0_t { // 80 bits
     unsigned int alt : 13; // 0 to +8192m
     unsigned int heading : 9; // 0 to 511°
 };
+
 
 struct air_type1_t { // 80 bits
     unsigned int id : 4;
